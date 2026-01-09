@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { MONTHS } from '../constants';
 import { getMonthDays, generatePlanForDay } from '../services/planService';
-import { generateReflectionForDay } from '../services/geminiService';
-import { CheckCircle2, ChevronRight, Loader2, Sparkles, X, Quote, Share2, Award, Trophy, Book, Target } from 'lucide-react';
+import { getLocalReflection } from '../services/reflectionService';
+import { CheckCircle2, ChevronRight, Quote, Share2, Award, Trophy, Book, Target, X } from 'lucide-react';
 import { DayPlan, Devotional, MonthDayMapping, PlanType } from '../types';
 import Stats from './Stats';
 
@@ -11,8 +11,6 @@ const Dashboard: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedDayPlan, setSelectedDayPlan] = useState<DayPlan | null>(null);
   const [reflection, setReflection] = useState<Devotional | null>(null);
-  const [loadingReflection, setLoadingReflection] = useState(false);
-  const [showAchievement, setShowAchievement] = useState<{ month: string, count: number } | null>(null);
   const [planType, setPlanType] = useState<PlanType>(() => {
     return (localStorage.getItem('planType') as PlanType) || 'linha-reta';
   });
@@ -31,19 +29,12 @@ const Dashboard: React.FC = () => {
     localStorage.setItem('completedDays', JSON.stringify(newCompleted));
   };
 
-  const handleOpenDay = async (day: number) => {
+  const handleOpenDay = (day: number) => {
     const plan = generatePlanForDay(day, planType);
     setSelectedDayPlan(plan);
-    setReflection(null);
-    setLoadingReflection(true);
-    try {
-      const data = await generateReflectionForDay(plan);
-      setReflection(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingReflection(false);
-    }
+    // Busca a reflexão localmente (instantâneo e offline)
+    const localData = getLocalReflection(day, plan);
+    setReflection(localData);
   };
 
   const changePlan = (type: PlanType) => {
@@ -141,7 +132,6 @@ const Dashboard: React.FC = () => {
         </div>
       </section>
 
-      {/* Estatísticas Integradas */}
       <Stats />
 
       {/* Grid de Meses ou Dias */}
@@ -193,15 +183,6 @@ const Dashboard: React.FC = () => {
                       >
                         Abrir Mês
                       </button>
-                      {stats.progress > 0 && (
-                        <button 
-                          onClick={() => handleShareMonth(month)}
-                          className="p-3 rounded-xl bg-green-50 dark:bg-slate-800 text-green-400 dark:text-slate-500 hover:text-green-600 dark:hover:text-neonGreen transition-colors"
-                          title="Compartilhar Mês"
-                        >
-                          <Share2 className="w-5 h-5" />
-                        </button>
-                      )}
                     </div>
                   </div>
                 );
@@ -219,11 +200,6 @@ const Dashboard: React.FC = () => {
               </button>
               <div className="flex-1 flex justify-between items-center">
                 <h3 className="text-2xl font-black text-green-900 dark:text-white uppercase tracking-tighter">{MONTHS[selectedMonth]}</h3>
-                {getMonthStats(selectedMonth).isComplete && (
-                  <div className="flex items-center gap-1.5 px-4 py-2 bg-green-100 dark:bg-neonGreen/20 text-green-700 dark:text-neonGreen rounded-full text-[10px] font-black uppercase tracking-widest border border-green-200 dark:border-neonGreen/40 shadow-sm">
-                    <Award className="w-4 h-4" /> Mês Completo
-                  </div>
-                )}
               </div>
             </div>
 
@@ -252,7 +228,7 @@ const Dashboard: React.FC = () => {
         )}
       </div>
 
-      {selectedDayPlan && (
+      {selectedDayPlan && reflection && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-lg shadow-2xl transition-all border border-green-50 dark:border-slate-800 my-auto">
             <div className="p-6 border-b border-green-50 dark:border-slate-800 flex justify-between items-center bg-green-50/50 dark:bg-slate-950/50">
@@ -293,33 +269,25 @@ const Dashboard: React.FC = () => {
               </div>
 
               <div className="pt-6 border-t border-green-50 dark:border-slate-800">
-                {loadingReflection ? (
-                  <div className="flex flex-col items-center py-10">
-                    <Loader2 className="w-8 h-8 text-green-500 dark:text-neonGreen animate-spin mb-3" />
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Carregando Reflexão do Dia</span>
+                <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="flex justify-between items-center px-1 mb-2">
+                    <h5 className="font-black text-green-900 dark:text-white uppercase text-sm tracking-widest">A Mensagem</h5>
+                    <button 
+                      onClick={handleShareReflection}
+                      className="flex items-center gap-1.5 text-xs font-bold text-green-600 dark:text-neonGreen hover:opacity-80 transition-opacity"
+                    >
+                      <Share2 className="w-4 h-4" /> COMPARTILHAR
+                    </button>
                   </div>
-                ) : reflection && (
-                  <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="flex justify-between items-center px-1 mb-2">
-                      <h5 className="font-black text-green-900 dark:text-white uppercase text-sm tracking-widest">A Mensagem</h5>
-                      <button 
-                        onClick={handleShareReflection}
-                        className="flex items-center gap-1.5 text-xs font-bold text-green-600 dark:text-neonGreen hover:opacity-80 transition-opacity"
-                        title="Compartilhar Reflexão"
-                      >
-                        <Share2 className="w-4 h-4" /> COMPARTILHAR
-                      </button>
-                    </div>
-                    <div className="bg-green-600 dark:bg-slate-800 rounded-3xl p-6 text-white shadow-xl dark:border-l-8 dark:border-neonGreen">
-                      <Quote className="w-8 h-8 text-green-300 dark:text-neonGreen opacity-50 mb-2" />
-                      <p className="bible-text text-2xl italic font-semibold leading-tight mb-3">"{reflection.verse}"</p>
-                      <p className="text-right text-sm font-black text-green-200 dark:text-neonOrange uppercase tracking-tighter">— {reflection.reference}</p>
-                    </div>
-                    <div className="px-1">
-                      <p className="text-base text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">{reflection.reflection}</p>
-                    </div>
+                  <div className="bg-green-600 dark:bg-slate-800 rounded-3xl p-6 text-white shadow-xl dark:border-l-8 dark:border-neonGreen">
+                    <Quote className="w-8 h-8 text-green-300 dark:text-neonGreen opacity-50 mb-2" />
+                    <p className="bible-text text-2xl italic font-semibold leading-tight mb-3">"{reflection.verse}"</p>
+                    <p className="text-right text-sm font-black text-green-200 dark:text-neonOrange uppercase tracking-tighter">— {reflection.reference}</p>
                   </div>
-                )}
+                  <div className="px-1">
+                    <p className="text-base text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">{reflection.reflection}</p>
+                  </div>
+                </div>
               </div>
 
               <button
