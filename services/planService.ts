@@ -63,14 +63,12 @@ const getSapientialForDay = (targetDay: number): ReadingSegment => {
 
 /**
  * Lógica do Plano Linha Reta (Cronológico)
- * Ordem: Gênesis 1-11 -> Jó -> Gênesis 12-50 -> Êxodo -> ...
  */
 const getLinhaRetaSegments = (day: number): ReadingSegment[] => {
-  // Definimos a ordem cronológica aproximada
   const chronologicalOrder = [
     { name: 'Gênesis', chapters: 11 },
     { name: 'Jó', chapters: 42 },
-    { name: 'Gênesis', offset: 11, chapters: 39 }, // 12-50
+    { name: 'Gênesis', offset: 11, chapters: 39 },
     { name: 'Êxodo', chapters: 40 },
     { name: 'Levítico', chapters: 27 },
     { name: 'Números', chapters: 36 },
@@ -80,8 +78,30 @@ const getLinhaRetaSegments = (day: number): ReadingSegment[] => {
     { name: 'Rute', chapters: 4 },
     { name: '1 Samuel', chapters: 31 },
     { name: '2 Samuel', chapters: 24 },
-    // Simplificando o restante do AT e NT para o cálculo sequencial
-    ...OT_BOOKS.filter(b => ![ 'Gênesis', 'Jó', 'Êxodo', 'Levítico', 'Números', 'Deuteronômio', 'Josué', 'Juízes', 'Rute', '1 Samuel', '2 Samuel'].includes(b.name)).map(b => ({ name: b.name, chapters: b.chapters })),
+    { name: '1 Reis', chapters: 22 },
+    { name: '2 Reis', chapters: 25 },
+    { name: '1 Crônicas', chapters: 29 },
+    { name: '2 Crônicas', chapters: 36 },
+    { name: 'Esdras', chapters: 10 },
+    { name: 'Neemias', chapters: 13 },
+    { name: 'Ester', chapters: 10 },
+    { name: 'Isaías', chapters: 66 },
+    { name: 'Jeremias', chapters: 52 },
+    { name: 'Lamentações', chapters: 5 },
+    { name: 'Ezequiel', chapters: 48 },
+    { name: 'Daniel', chapters: 12 },
+    { name: 'Oséias', chapters: 14 },
+    { name: 'Joel', chapters: 3 },
+    { name: 'Amós', chapters: 9 },
+    { name: 'Obadias', chapters: 1 },
+    { name: 'Jonas', chapters: 4 },
+    { name: 'Miquéias', chapters: 7 },
+    { name: 'Naum', chapters: 3 },
+    { name: 'Habacuque', chapters: 3 },
+    { name: 'Sofonias', chapters: 3 },
+    { name: 'Ageu', chapters: 2 },
+    { name: 'Zacarias', chapters: 14 },
+    { name: 'Malaquias', chapters: 4 },
     ...NT_BOOKS.map(b => ({ name: b.name, chapters: b.chapters }))
   ];
 
@@ -97,7 +117,6 @@ const getLinhaRetaSegments = (day: number): ReadingSegment[] => {
     const bookStart = current;
     const bookEnd = current + book.chapters - 1;
 
-    // Se o dia de hoje overlap com este livro
     if (!(endGlobal < bookStart || startGlobal > bookEnd)) {
       const s = Math.max(startGlobal, bookStart);
       const e = Math.min(endGlobal, bookEnd);
@@ -124,7 +143,6 @@ export const generatePlanForDay = (day: number, type: PlanType = 'completo'): Da
       nt: getReadingForDayCompleto(NT_BOOKS, day)
     };
   }
-
   return {
     day,
     segments: getLinhaRetaSegments(day)
