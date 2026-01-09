@@ -2,7 +2,9 @@
 import { OT_BOOKS, NT_BOOKS, SAP_BOOKS } from '../constants';
 import { BibleBook, ReadingSegment, DayPlan, MonthDayMapping, PlanType } from '../types';
 
-// Lógica do Plano Completo (OT + NT + Sapiential)
+/**
+ * Lógica do Plano Completo (3 partes: OT + NT + Sapiential)
+ */
 const getReadingForDayCompleto = (books: BibleBook[], targetDay: number, totalDays: number = 365): ReadingSegment => {
   const totalChapters = books.reduce((acc, b) => acc + b.chapters, 0);
   const chaptersPerDay = totalChapters / totalDays;
@@ -34,7 +36,7 @@ const getReadingForDayCompleto = (books: BibleBook[], targetDay: number, totalDa
     endChap = last.chapters;
   }
   return {
-    book: startBook === endBook ? startBook : `${startBook} - ${endBook}`,
+    book: startBook === endBook ? startBook : `${startBook} / ${endBook}`,
     startChapter: startChap,
     endChapter: endChap
   };
@@ -59,8 +61,60 @@ const getSapientialForDay = (targetDay: number): ReadingSegment => {
   return { book: "Salmos", startChapter: 1, endChapter: 1 };
 };
 
-// Mapeamento simplificado do Plano em Linha Reta (Baseado na Imagem)
-// Para fins de demonstração robusta, implementamos o fluxo sequencial que a imagem sugere
+/**
+ * Lógica do Plano Linha Reta (Cronológico)
+ * Ordem: Gênesis 1-11 -> Jó -> Gênesis 12-50 -> Êxodo -> ...
+ */
+const getLinhaRetaSegments = (day: number): ReadingSegment[] => {
+  // Definimos a ordem cronológica aproximada
+  const chronologicalOrder = [
+    { name: 'Gênesis', chapters: 11 },
+    { name: 'Jó', chapters: 42 },
+    { name: 'Gênesis', offset: 11, chapters: 39 }, // 12-50
+    { name: 'Êxodo', chapters: 40 },
+    { name: 'Levítico', chapters: 27 },
+    { name: 'Números', chapters: 36 },
+    { name: 'Deuteronômio', chapters: 34 },
+    { name: 'Josué', chapters: 24 },
+    { name: 'Juízes', chapters: 21 },
+    { name: 'Rute', chapters: 4 },
+    { name: '1 Samuel', chapters: 31 },
+    { name: '2 Samuel', chapters: 24 },
+    // Simplificando o restante do AT e NT para o cálculo sequencial
+    ...OT_BOOKS.filter(b => ![ 'Gênesis', 'Jó', 'Êxodo', 'Levítico', 'Números', 'Deuteronômio', 'Josué', 'Juízes', 'Rute', '1 Samuel', '2 Samuel'].includes(b.name)).map(b => ({ name: b.name, chapters: b.chapters })),
+    ...NT_BOOKS.map(b => ({ name: b.name, chapters: b.chapters }))
+  ];
+
+  const totalChapters = chronologicalOrder.reduce((acc, b) => acc + b.chapters, 0);
+  const chaptersPerDay = totalChapters / 365;
+  const startGlobal = Math.floor((day - 1) * chaptersPerDay);
+  const endGlobal = Math.max(startGlobal, Math.floor(day * chaptersPerDay) - 1);
+
+  let current = 0;
+  let results: ReadingSegment[] = [];
+
+  for (const book of chronologicalOrder) {
+    const bookStart = current;
+    const bookEnd = current + book.chapters - 1;
+
+    // Se o dia de hoje overlap com este livro
+    if (!(endGlobal < bookStart || startGlobal > bookEnd)) {
+      const s = Math.max(startGlobal, bookStart);
+      const e = Math.min(endGlobal, bookEnd);
+      
+      const realOffset = (book as any).offset || 0;
+      results.push({
+        book: book.name,
+        startChapter: (s - bookStart) + 1 + realOffset,
+        endChapter: (e - bookStart) + 1 + realOffset
+      });
+    }
+    current += book.chapters;
+  }
+
+  return results.length > 0 ? results : [{ book: 'Salmos', startChapter: 1, endChapter: 1 }];
+};
+
 export const generatePlanForDay = (day: number, type: PlanType = 'completo'): DayPlan => {
   if (type === 'completo') {
     return {
@@ -70,25 +124,6 @@ export const generatePlanForDay = (day: number, type: PlanType = 'completo'): Da
       nt: getReadingForDayCompleto(NT_BOOKS, day)
     };
   }
-
-  // Lógica "Linha Reta" (Ordem Cronológica aproximada da imagem)
-  // Janeiros: Gen 1-11, Jó 1-42, Gen 12-50...
-  // Implementação de fluxo para o Plano em Linha Reta:
-  const getLinhaRetaSegments = (d: number): ReadingSegment[] => {
-    // Exemplo de mapeamento para Janeiro (Dias 1-31)
-    if (d <= 4) return [{ book: 'Gênesis', startChapter: (d-1)*3+1, endChapter: d*3 }];
-    if (d >= 5 && d <= 16) {
-      const jobDay = d - 4;
-      return [{ book: 'Jó', startChapter: (jobDay-1)*4+1, endChapter: jobDay*4 }];
-    }
-    if (d >= 17 && d <= 31) {
-      const genDay = d - 16;
-      return [{ book: 'Gênesis', startChapter: 11 + (genDay-1)*3, endChapter: 11 + genDay*3 }];
-    }
-    // Para os demais dias, seguimos uma lógica sequencial simplificada para cobrir o ano
-    // Na prática, em uma versão final, este objeto teria o mapeamento exato de todos os 365 dias
-    return [{ book: d < 180 ? 'Antigo Testamento' : 'Novo Testamento', startChapter: d % 30 + 1, endChapter: d % 30 + 3 }];
-  };
 
   return {
     day,
