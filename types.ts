@@ -16,12 +16,12 @@ export interface ReadingSegment {
 
 export interface DayPlan {
   day: number;
-  // Para o plano completo (3 partes)
-  ot?: ReadingSegment;
-  sapiential?: ReadingSegment;
-  nt?: ReadingSegment;
-  // Para o plano em linha reta (pode ter 1 ou mais segmentos sequenciais)
-  segments?: ReadingSegment[];
+  // Para o plano completo (suporta os 3 campos como string ou objeto)
+  ot?: ReadingSegment | string;
+  sapiential?: ReadingSegment | string;
+  nt?: ReadingSegment | string;
+  // Para o plano em linha reta
+  segments?: (ReadingSegment | string)[];
 }
 
 export interface MonthDayMapping {

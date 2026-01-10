@@ -4,7 +4,7 @@ import { MONTHS } from '../constants';
 import { getMonthDays, generatePlanForDay } from '../services/planService';
 import { getLocalReflection } from '../services/reflectionService';
 import { CheckCircle2, ChevronRight, Quote, Share2, Award, Trophy, Book, Target, X } from 'lucide-react';
-import { DayPlan, Devotional, MonthDayMapping, PlanType } from '../types';
+import { DayPlan, Devotional, MonthDayMapping, PlanType, ReadingSegment } from '../types';
 import Stats from './Stats';
 
 const Dashboard: React.FC = () => {
@@ -32,7 +32,6 @@ const Dashboard: React.FC = () => {
   const handleOpenDay = (day: number) => {
     const plan = generatePlanForDay(day, planType);
     setSelectedDayPlan(plan);
-    // Busca a reflexão localmente (instantâneo e offline)
     const localData = getLocalReflection(day, plan);
     setReflection(localData);
   };
@@ -75,6 +74,24 @@ const Dashboard: React.FC = () => {
     if (!reflection) return;
     const text = `✨ Reflexão do Dia - Bíblia 365\n\n"${reflection.verse}" (${reflection.reference})\n\n${reflection.reflection}\n\n#Biblia365 #DevocionalDiario`;
     shareProgress('Reflexão do Dia', text);
+  };
+
+  const renderReadingItem = (item: ReadingSegment | string | undefined, colorClass: string, label: string) => {
+    if (!item) return null;
+    
+    let display = "";
+    if (typeof item === 'string') {
+      display = item;
+    } else {
+      display = `${item.book} ${item.startChapter}${item.startChapter !== item.endChapter ? `-${item.endChapter}` : ''}`;
+    }
+
+    return (
+      <div className={`p-5 rounded-2xl border-2 shadow-sm ${colorClass}`}>
+        <span className="text-[10px] font-bold opacity-60 uppercase tracking-widest block mb-1">{label}</span>
+        <p className="text-xl font-black">{display}</p>
+      </div>
+    );
   };
 
   return (
@@ -234,7 +251,7 @@ const Dashboard: React.FC = () => {
             <div className="p-6 border-b border-green-50 dark:border-slate-800 flex justify-between items-center bg-green-50/50 dark:bg-slate-950/50">
               <div>
                 <span className="text-[10px] font-black uppercase text-green-600 dark:text-neonOrange tracking-[0.2em]">Dia {selectedDayPlan.day} • {planType === 'linha-reta' ? 'Linha Reta' : 'Completo'}</span>
-                <h4 className="text-2xl font-black text-green-900 dark:text-white">Leitura Sugerida</h4>
+                <h4 className="text-2xl font-black text-green-900 dark:text-white">Leitura de Hoje</h4>
               </div>
               <button onClick={() => setSelectedDayPlan(null)} className="p-3 hover:bg-white dark:hover:bg-slate-800 rounded-2xl text-slate-400 transition-colors shadow-sm">
                 <X className="w-6 h-6" />
@@ -245,24 +262,17 @@ const Dashboard: React.FC = () => {
               <div className="grid grid-cols-1 gap-4">
                 {planType === 'completo' ? (
                   <>
-                    <div className="p-5 bg-green-50/50 dark:bg-slate-800/50 rounded-2xl border border-green-100 dark:border-slate-800">
-                      <span className="text-[10px] font-bold text-green-500 dark:text-neonGreen uppercase tracking-widest block mb-2">Antigo Testamento</span>
-                      <p className="text-xl font-black text-green-900 dark:text-white">{selectedDayPlan.ot?.book} {selectedDayPlan.ot?.startChapter}-{selectedDayPlan.ot?.endChapter}</p>
-                    </div>
-                    <div className="p-5 bg-amber-50/30 dark:bg-slate-800/50 rounded-2xl border border-amber-100 dark:border-slate-800">
-                      <span className="text-[10px] font-bold text-amber-500 dark:text-neonOrange uppercase tracking-widest block mb-2">Sapienciais</span>
-                      <p className="text-xl font-black text-amber-900 dark:text-white">{selectedDayPlan.sapiential?.book} {selectedDayPlan.sapiential?.startChapter}</p>
-                    </div>
-                    <div className="p-5 bg-emerald-50/50 dark:bg-slate-800/50 rounded-2xl border border-emerald-100 dark:border-slate-800">
-                      <span className="text-[10px] font-bold text-emerald-500 dark:text-neonGreen uppercase tracking-widest block mb-2">Novo Testamento</span>
-                      <p className="text-xl font-black text-emerald-900 dark:text-white">{selectedDayPlan.nt?.book} {selectedDayPlan.nt?.startChapter}-{selectedDayPlan.nt?.endChapter}</p>
-                    </div>
+                    {renderReadingItem(selectedDayPlan.ot, "bg-green-50/50 dark:bg-slate-800/50 border-green-100 dark:border-neonGreen/20 text-green-900 dark:text-white", "Antigo Testamento")}
+                    {renderReadingItem(selectedDayPlan.sapiential, "bg-amber-50/30 dark:bg-slate-800/50 border-amber-100 dark:border-neonOrange/20 text-amber-900 dark:text-white", "Sapienciais / Salmos")}
+                    {renderReadingItem(selectedDayPlan.nt, "bg-emerald-50/50 dark:bg-slate-800/50 border-emerald-100 dark:border-neonGreen/20 text-emerald-900 dark:text-white", "Novo Testamento")}
                   </>
                 ) : (
                   selectedDayPlan.segments?.map((seg, idx) => (
                     <div key={idx} className="p-6 bg-green-50/50 dark:bg-slate-800/50 rounded-[24px] border-2 border-green-100 dark:border-neonGreen/20 shadow-sm">
                       <span className="text-[10px] font-bold text-green-500 dark:text-neonGreen uppercase tracking-[0.3em] block mb-2">Trecho Cronológico</span>
-                      <p className="text-3xl font-black text-green-900 dark:text-white leading-tight">{seg.book} {seg.startChapter} {seg.startChapter !== seg.endChapter ? `a ${seg.endChapter}` : ''}</p>
+                      <p className="text-3xl font-black text-green-900 dark:text-white leading-tight">
+                        {typeof seg === 'string' ? seg : `${seg.book} ${seg.startChapter}${seg.startChapter !== seg.endChapter ? ` a ${seg.endChapter}` : ''}`}
+                      </p>
                     </div>
                   ))
                 )}

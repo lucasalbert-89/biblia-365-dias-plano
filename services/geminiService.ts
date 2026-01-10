@@ -5,9 +5,16 @@ import { Devotional, DayPlan } from "../types";
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generateReflectionForDay = async (plan: DayPlan): Promise<Devotional> => {
+  // Fix: Local helper to safely format reading segments that can be strings or objects
+  const formatS = (s: any) => {
+    if (!s) return "";
+    if (typeof s === 'string') return s;
+    return `${s.book} ${s.startChapter}${s.startChapter !== s.endChapter ? `-${s.endChapter}` : ''}`;
+  };
+
   const readingDescription = plan.segments 
-    ? plan.segments.map(s => `${s.book} ${s.startChapter}-${s.endChapter}`).join(', ')
-    : `Antigo Testamento: ${plan.ot?.book} ${plan.ot?.startChapter}-${plan.ot?.endChapter}, Sapiencial: ${plan.sapiential?.book} ${plan.sapiential?.startChapter}, Novo Testamento: ${plan.nt?.book} ${plan.nt?.startChapter}-${plan.nt?.endChapter}`;
+    ? plan.segments.map(s => formatS(s)).join(', ')
+    : `Antigo Testamento: ${formatS(plan.ot)}, Sapiencial: ${formatS(plan.sapiential)}, Novo Testamento: ${formatS(plan.nt)}`;
 
   const prompt = `Gere uma reflexão bíblica para o dia ${plan.day} de um plano de leitura anual.
   A leitura de hoje consiste em: ${readingDescription}
